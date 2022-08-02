@@ -10,7 +10,7 @@
 
 
 ■ AWS でインスタンスを 1 つ作成する。
-Ubuntu Server 22.04 LTS (HVM), SSD Volume Type
+Ubuntu Server 20.04 LTS (HVM), SSD Volume Type
 x86 (64-bit)
 t2.medium
 
@@ -299,8 +299,8 @@ DDns_DomainName                                      ddns_example.com
 DDns_DomainNamePrimary                               ddns_example.net
 #  ↓
 # これを以下のようにする。DDns_DomainName は 1 つで良い。
-DDns_DomainName                                      ns02.abc_ddns.com
-DDns_DomainNamePrimary                               ns02.abc_ddns.com
+DDns_DomainName                                      abc_ddns.com
+DDns_DomainNamePrimary                               abc_ddns.com
 
 # 初期状態で以下のようになっているが
 DDns_Protocol_SOA_MasterNsServerFqdn                 ns01.ddns_example.net
