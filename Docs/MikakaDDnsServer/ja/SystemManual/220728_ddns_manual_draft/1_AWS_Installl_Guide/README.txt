@@ -534,4 +534,51 @@ sudo systemctl start MikakaDDnsServer
 
 
 
+■ DDNS サーバー冗長化の際の Route 53 との組み合わせ方法 (2022/8/4 追記 登)
+上記の「その他 拡張 3」に関連して質問がありましたので、追記をします。
+
+1. DDNS 親ドメインが「abc_ddns.com」と仮定します。
+
+2. これとは別のドメイン「abc_ddns_helper.com」を取得したとします。このヘルパードメインは Route 53 で DNS 権威サーバーをホストすることにします。
+
+3. https://github.com/IPA-CyberLab/IPA-DN-Docs/tree/master/Docs/MikakaDDnsServer/ja/SystemManual/220728_ddns_manual_draft/1_AWS_Installl_Guide
+の「別名参照先実体レコード」として、たとえば、以下のような「v4-api.abc_ddns_helper.com」というレコードを登録します。
+v4-api.abc_ddns_helper.com  A レコード
+
+ここで、IPv4 アドレスは ns01 の実体 IP アドレスと ns02 の実体 IPv4 アドレスの両方を登録したとします。
+
+4. Route 53 上で、3 の 2 つの登録 IPv4 アドレスについて、ヘルスチェックを有効にします。ヘルスチェックが通った IPv4 アドレスだけが返るように設定します。
+ヘルスチェックの方法は、ns01 および ns02 の実体 IPv4 アドレス (固定) に対して HTTP で接続し、トップページ / へのアクセスが成功するか否か、で良いと思います。
+
+AWS のドキュメントは以下のとおりです。
+https://docs.aws.amazon.com/ja_jp/Route53/latest/DeveloperGuide/dns-failover-simple-configs.html
+
+AWS のユーザーによる詳しい説明記事があります。
+https://dev.classmethod.jp/articles/route53-how-to-set-up-failover-routing/
+https://qiita.com/kooohei/items/c24dd3bab57552127886
+
+5. nslookup や dig で、
+v4-api.abc_ddns_helper.com
+を解決してみます。2 台の DDNS サーバーのうち 1 台をダウンさせてみたり、立ち上げてみたりします。
+ダウンしている側の DDNS サーバーの実体 IP アドレスが戻ってこないことを確認します。
+これでヘルスチェックのテストは OK です。
+
+6. DDNS サーバーの Admin Config Editor で、
+DDns_StaticRecord  CNAME ddns-api-v4-static v4.@
+
+の定義を
+
+DDns_StaticRecord  CNAME ddns-api-v4-static v4-api.abc_ddns_helper.com
+
+に変更します。
+
+7. 6 により、 ddns-api-v4-static.abc_ddns.com の CNAME が v4-api.abc_ddns_helper.com になりました。これで、2 台の DDNS サーバーのうち 1 台がダウンしている時も、1 台が生きていれば、DDNS クライアントは必ず生きている側の DDNS サーバーに到達可能です。(ヘルスチェックの間隔および DNS のキャッシュが消えるまでの間隔時間中は、ダウンしている側の DDNS サーバーにアクセスしようとしてエラーが発生する可能性はあります。)
+
+8. 補足
+AWS Route 53 に依存するのは、複雑化を招き、理想的ではなく、良くないと考えています。
+そこで、上記と同じヘルスチェック機能を DDNS サーバー本体に実装することができるか調査しており、実装できそうな場合は、近日中に実装予定です。これが実装できたならば、Route 53 への依存は不要になります。
+
+
+
+
 
