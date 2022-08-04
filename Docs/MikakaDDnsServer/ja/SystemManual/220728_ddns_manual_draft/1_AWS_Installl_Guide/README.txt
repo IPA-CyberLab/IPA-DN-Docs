@@ -500,6 +500,38 @@ Service_HideJsonRpcErrorDetails                      false
 
 
 
+■ DDNS サーバーを 2 台以上に冗長化する方法 (2022/8/4 追記 登)
+DDNS サーバーを 2 台以上にする手順は以下のとおりです。
+なお、上記の「その他 拡張 3」も参照してください。
+
+
+1. 1 台の場合と同様に、DDNS サーバーを 2 台以上の VM に入れて稼働させます。ただし、データベースサーバーは同じホストには入れません。この状態では DB がないので動作エラーになりますが、正常です。
+2. SQL Server のデータベースサーバーは、独立した 1 台の VM に入れて稼働させます。
+3. 2 台の DDNS サーバーを一度停止します。
+sudo systemctl stop MikakaDDnsServer
+各 DDNS サーバーの
+/data1/MikakaDDnsServerDaemon/IPA-DN-Cores/Cores.NET/Dev.Test/Local/App_TestDev/Config/MikakaDDnsService.json
+をテキストエディタで開きます。
+
+  "HadbSqlServerHostname": "127.0.0.1",
+
+の IP アドレスを、SQL Server を稼働させている IP アドレスに書き換えます。通常、VM 同の通信が VPC で行なわれると思われますので、これは、プライベート IP アドレスになると思います。
+
+4. 2 台の DDNS サーバーを再開します。
+sudo systemctl start MikakaDDnsServer
+この状態で管理画面に入れることを確認します。
+(DB との通信に失敗しているときは、管理画面に入れません。この場合、DDNS サーバーの Debug ログを参照して、DB との通信に失敗している原因を確認して回復します。)
+
+5. Admin Config Editor の DDns_StaticRecord で、ns01, ns02 の 2 台のホストの定義がありますが、これに、2 台の DDNS サーバーのグローバル IP アドレスを指定します。(標準の設定手順書では同じ IP アドレスを指定していました。)
+また、親ドメインに関する上位 DNS サーバーの NS レコード (Delegation) について、Glue レコードとして ns01, ns02 の IP アドレスを指定するケースでは、同じく、2 台の DDNS サーバーのグローバル IP アドレスを指定します。
+
+6. 一方の DDNS サーバーの API を用いて適当な DDNS ホストを作成してみて、もう一方の DDNS サーバーの API を用いてその DDNS ホストの定義が見えることを確認します。
+また、DNS クライアント (nslookup または dig) を用いて、2 台の DDNS サーバーの両方に対して名前解決をしてみて、結果が同じであることを確認します。
+
+さらに 3 台目、4 台目の DDNS サーバーを稼働させる場合は、ns03, ns04, ... というように追加していくことができます。
+
+クラウド (AWS 等) を用いる場合、複数の DDNS サーバーは、同じリージョンの、異なるアベイビリティゾーンに分散すると良いでしょう。
+
 
 
 
