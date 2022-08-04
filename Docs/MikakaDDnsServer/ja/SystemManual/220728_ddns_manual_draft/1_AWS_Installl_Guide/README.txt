@@ -542,8 +542,8 @@ sudo systemctl start MikakaDDnsServer
 2. これとは別のドメイン「abc_ddns_helper.com」を取得したとします。このヘルパードメインは Route 53 で DNS 権威サーバーをホストすることにします。
 
 3. https://github.com/IPA-CyberLab/IPA-DN-Docs/tree/master/Docs/MikakaDDnsServer/ja/SystemManual/220728_ddns_manual_draft/1_AWS_Installl_Guide
-の「別名参照先実体レコード」として、たとえば、以下のような「v4-api.abc_ddns_helper.com」というレコードを登録します。
-v4-api.abc_ddns_helper.com  A レコード
+の「別名参照先実体レコード」として、たとえば、以下のような「v4-route53.abc_ddns_helper.com」というレコードを登録します。
+v4-route53.abc_ddns_helper.com  A レコード
 
 ここで、IPv4 アドレスは ns01 の実体 IP アドレスと ns02 の実体 IPv4 アドレスの両方を登録したとします。
 
@@ -558,7 +558,7 @@ https://dev.classmethod.jp/articles/route53-how-to-set-up-failover-routing/
 https://qiita.com/kooohei/items/c24dd3bab57552127886
 
 5. nslookup や dig で、
-v4-api.abc_ddns_helper.com
+v4-route53.abc_ddns_helper.com
 を解決してみます。2 台の DDNS サーバーのうち 1 台をダウンさせてみたり、立ち上げてみたりします。
 ダウンしている側の DDNS サーバーの実体 IP アドレスが戻ってこないことを確認します。
 これでヘルスチェックのテストは OK です。
@@ -568,14 +568,14 @@ DDns_StaticRecord  CNAME ddns-api-v4-static v4.@
 
 の定義を
 
-DDns_StaticRecord  CNAME ddns-api-v4-static v4-api.abc_ddns_helper.com
+DDns_StaticRecord  CNAME ddns-api-v4-static v4-route53.abc_ddns_helper.com
 
 に変更します。
 
-7. 6 により、 ddns-api-v4-static.abc_ddns.com の CNAME が v4-api.abc_ddns_helper.com になりました。これで、2 台の DDNS サーバーのうち 1 台がダウンしている時も、1 台が生きていれば、DDNS クライアントは必ず生きている側の DDNS サーバーに到達可能です。(ヘルスチェックの間隔および DNS のキャッシュが消えるまでの間隔時間中は、ダウンしている側の DDNS サーバーにアクセスしようとしてエラーが発生する可能性はあります。)
+7. 6 により、 ddns-api-v4-static.abc_ddns.com の CNAME が v4-route53.abc_ddns_helper.com を指すようになりました。これで、2 台の DDNS サーバーのうち 1 台がダウンしている時も、1 台が生きていれば、DDNS クライアントは必ず生きている側の DDNS サーバーに到達可能です。(ヘルスチェックの間隔および DNS のキャッシュが消えるまでの間隔時間中は、ダウンしている側の DDNS サーバーにアクセスしようとしてエラーが発生する可能性はあります。)
 
 8. 補足
-AWS Route 53 に依存するのは、複雑化を招き、理想的ではなく、良くないと考えています。
+実は、登は、上記のヘルスチェックを AWS Route 53 に依存するのは、複雑化を招き、理想的ではなく、良くないと考えています。
 そこで、上記と同じヘルスチェック機能を DDNS サーバー本体に実装することができるか調査しており、実装できそうな場合は、近日中に実装予定です。これが実装できたならば、Route 53 への依存は不要になります。
 
 
