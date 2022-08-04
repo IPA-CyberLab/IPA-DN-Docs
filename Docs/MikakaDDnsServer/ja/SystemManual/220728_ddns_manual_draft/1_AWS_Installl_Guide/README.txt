@@ -539,7 +539,9 @@ sudo systemctl start MikakaDDnsServer
 
 1. DDNS 親ドメインが「abc_ddns.com」と仮定します。
 
-2. これとは別のドメイン「abc_ddns_helper.com」を取得したとします。このヘルパードメインは Route 53 で DNS 権威サーバーをホストすることにします。
+2. これとは別のドメイン「abc_ddns_helper.com」を取得します。これはユーザーの目には触れないので、最も安価なドメインで良いと思います。
+なお、必ずしも有償のドメインを取得する必要がある訳ではありません。既存の会社等が保有するドメインのサブドメインで NS レコードを Route 53 に移譲することで、同じ結果を、ドメイン取得のコストをかけることなく、無償で実現することができます。
+このヘルパードメインは Route 53 で DNS 権威サーバーをホストすることにします。
 
 3. https://github.com/IPA-CyberLab/IPA-DN-Docs/tree/master/Docs/MikakaDDnsServer/ja/SystemManual/220728_ddns_manual_draft/1_AWS_Installl_Guide
 の「別名参照先実体レコード」として、たとえば、以下のような「v4-route53.abc_ddns_helper.com」というレコードを登録します。
