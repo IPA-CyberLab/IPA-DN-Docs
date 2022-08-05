@@ -1,6 +1,6 @@
 ﻿開発中の Mikaka DDNS サーバーの暫定構築手順書
 
-2022/7/28 登 大遊
+2022/8/05 登 大遊
 
 本ドキュメントは、開発中の Mikaka DDNS サーバーの暫定構築手順書である。
 
@@ -200,7 +200,7 @@ cd /data1/MikakaDDnsServerDaemon/
 git clone --recursive https://github.com/IPA-CyberLab/IPA-DN-Cores.git
 
 cd /data1/MikakaDDnsServerDaemon/IPA-DN-Cores/
-git checkout 15cd42e8326e62f38bf56d874ba329ff85e29cd9
+git checkout e051664075c3f805be40f03ad9b894893352bc50
 
 #### 初期設定ファイルを書き込み
 mkdir -p /data1/MikakaDDnsServerDaemon/IPA-DN-Cores/Cores.NET/Dev.Test/Local/App_TestDev/Config/
@@ -313,13 +313,13 @@ DDns_Protocol_SOA_MasterNsServerFqdn                 ns01.abc_ddns.com
 # 初期状態で以下のようになっているが
 DDns_StaticRecord                                    A ns01 1.2.3.4
 DDns_StaticRecord                                    A ns02 1.2.3.4
-DDns_StaticRecord                                    A @ 1.2.3.4
-DDns_StaticRecord                                    A v4 1.2.3.4
+DDns_StaticRecord                                    A @ 1.2.3.4 ! health_check_url=https://<THIS_IP>/health_check/
+DDns_StaticRecord                                    A v4 1.2.3.4 ! health_check_url=https://<THIS_IP>/health_check/
 #  この「1.2.3.4」という部分を、現在立ち上げているこの Linux サーバーのグローバル IPv4 アドレスに置換する。
 
-# 初期状態で以下のようになっているが
-DDns_StaticRecord                                    AAAA @ 1111:2222:3333::4444
-DDns_StaticRecord                                    AAAA v6 1111:2222:3333::4444
+# 初期状態で以下のようになっているが (IPv6 を利用する場合)
+DDns_StaticRecord                                    AAAA @ 1111:2222:3333::4444  ! health_check_url=https://<THIS_IP>/health_check/
+DDns_StaticRecord                                    AAAA v6 1111:2222:3333::4444 ! health_check_url=https://<THIS_IP>/health_check/
 #  この「1111:2222:3333::4444」という部分を、現在立ち上げているこの Linux サーバーのグローバル IPv6 アドレスに置換する。
 
 
@@ -427,14 +427,11 @@ DDNS サーバーは、2 ～ 4 台くらいに増加させることができる�
 
 (1) DDNS サーバーの権威 DNS サーバーとしての機能 (ゾーンサーバーとしての機能) を複数台に分散することについて考える。NS レコードを複数登録し、クラウド上などで動作させる各インスタンスの IP アドレスを指定していれば、DNS の仕組みにより、1 つの NS への問い合わせが失敗したら別の NS への問い合わせが行なわれるので、一部の DDNS サーバーが停止しても、名前解決は停止しない。したがって、複数のインスタンスのうち一部のインスタンスが停止しても、名前解決は継続できる。
 
-(2) ただし、DDNS サーバーのユーザー (DDNS ホストの登録者) に対して案内している DDNS ホストの登録・更新用の URL のホスト名部分が示す IP アドレスを、ある 1 台のインスタンスだけを指すようにしていると、まさにそのインスタンスが停止してしまったとき、DDNS ホストの新規登録・更新・削除ができなくなる。(繰り返しになるが、(1) により、名前解決は継続できる。) この問題の対処方法は、次の 2 通り存在する。
+(2) ただし、DDNS サーバーのユーザー (DDNS ホストの登録者) に対して案内している DDNS ホストの登録・更新用の URL のホスト名部分が示す IP アドレスを、ある 1 台のインスタンスだけを指すようにしていると、まさにそのインスタンスが停止してしまったとき、DDNS ホストの新規登録・更新・削除ができなくなる。(繰り返しになるが、(1) により、名前解決は継続できる。)
+そこで、DDNS サーバーのユーザー (DDNS ホストの登録者) に対して案内している DDNS ホストの登録・更新用の URL のホスト名部分が示す IP アドレスは、複数設定しておくことを推奨する。
+具体的には、DDns_StaticRecord で A レコード (必要な場合は AAAA レコード) を複数定義し、その定義の末尾に 「! health_check_url=https://<THIS_IP>/health_check/」という制御文字列を付けることにより、その A レコード (または AAAA レコード) に記載されている IP アドレス上の DDNS サーバー機能が正常に動作しているかどうかを相互監視し合い、DNS レスポンスにおいて、動作が異常な DDNS サーバーに関する A レコード (または AAAA レコード) を応答しないようにすることができるのである。
 
-   (a) このような場合、すなわち、まさにそのインスタンスが停止してしまっている間に、DDNS ホストの新規登録・更新・削除ができない、という事項は、制約事項であると考える。高品質なクラウドサービスの場合は、実際にダウンが発生する頻度はとても少なく、また、ダウンが発生している間も名前解決はできるのであれば、ダウンが発生している間に DDNS ホストの新規登録・更新・削除ができないという不便は受容される場合が多いと考えられる。
-   
-   (b) DDNS サーバーのユーザー (DDNS ホストの登録者) に対して案内している DDNS ホストの登録・更新用の URL のホスト名部分が示す IP アドレスについて、静的な 1 つの IP アドレスを指し示すのではなく、「問題なく動作しているインスタンスのうちいずれかの IP アドレス」を返すように構成する。これには色々な方法があるが、一番簡単な方法は、自動フェイルオーバー機能を有する DNS サーバーサービス (たとえば AWS の Route 53 の https://docs.aws.amazon.com/ja_jp/Route53/latest/DeveloperGuide/dns-failover-simple-configs.html など) を併用する方法である。このために、別のドメインを 1 つ用意し、そのドメイン内に A レコードを複数追加する (この A レコードの FQDN を、ここでは、「別名参照先実体レコード」という)。そして、前記 URL の方法で冗長構成を行なう。最後に、DNS サーバーのユーザー (DDNS ホストの登録者) に対して案内している DDNS ホストの登録・更新用の URL のホストを、A レコードではなく、CNAME レコードとして定義し、「別名参照先実体レコード」を指し示す。(これは、DDNS サーバーの設定ファイルの DDns_StaticRecord で定義できる。)
-   これにより、複数の DDNS サーバーのインスタンスのうち 1 台が停止してしまったとき、そのインスタンスは除外して、他の健全なインスタンスに対してアクセスが行なわれるようになる。この手法により、(1) だけでなく、(2) も冗長が可能となる。
-
-(3) なお、データベースサーバーは、1 台しか存在できない。したがって、データベースサーバーがダウンしている間は、DDNS ホストの登録・更新・削除ができなくなる。これは、本 DDNS サービスの回避できない制約事項である。
+(3) データベースサーバーは、1 台しか存在できない。したがって、データベースサーバーがダウンしている間は、DDNS ホストの登録・更新・削除ができなくなる。これは、本 DDNS サービスの回避できない制約事項である。ただし、データベースサーバーがダウンしている間も、最後にデータベースサーバーが正常であったときの DDNS ホストレコードの一覧は各 DDNS サーバーのローカルバックアップファイルとしてキャッシュされているので、名前解決は継続することが可能である。したがって、ほとんどのケースにおいて、データベースサーバーの一時的な障害による影響は少ない。
 
 
 
@@ -534,53 +531,80 @@ sudo systemctl start MikakaDDnsServer
 
 
 
-■ DDNS サーバー冗長化の際の Route 53 との組み合わせ方法 (2022/8/4 追記 登)
-上記の「その他 拡張 3」に関連して質問がありましたので、追記をします。
+■ DDNS サーバー冗長化の際の、ユーザー向け DDNS サーバーのアクセス用の A レコードおよび AAAA レコードを複数記載する場合におけるヘルスチェック機能 (2022/8/5)
 
-1. DDNS 親ドメインが「abc_ddns.com」と仮定します。
+2022/8/4 の本ドキュメントの案内 (変更差分は Git の履歴を参照のこと) では、DDNS サーバー冗長化の際の、ユーザー向け DDNS サーバーのアクセス用の A レコードおよび AAAA レコードを複数記載する場合におけるヘルスチェック機能は AWS Route 53 等の外部のクラウド型 DNS サーバーホスティングサービスのヘルスチェック機能を用いることを推奨していた。しかしながら、この方法では、外部のクラウド型 DNS ホスティングサービスに依存することになってしまう。
 
-2. これとは別のドメイン「abc_ddns_helper.com」を取得します。これはユーザーの目には触れないので、最も安価なドメインで良いと思います。
-なお、必ずしも有償のドメインを取得する必要がある訳ではありません。既存の会社等が保有するドメインのサブドメインで NS レコードを Route 53 に移譲することで、同じ結果を、ドメイン取得のコストをかけることなく、無償で実現することができます。
-このヘルパードメインは Route 53 で DNS 権威サーバーをホストすることにします。
+そこで、2022/8/5 のソースコードのバージョンから、DDNS サーバーそのものに、ヘルスチェック機能を内蔵した。
 
-3. https://github.com/IPA-CyberLab/IPA-DN-Docs/tree/master/Docs/MikakaDDnsServer/ja/SystemManual/220728_ddns_manual_draft/1_AWS_Installl_Guide
-の「別名参照先実体レコード」として、たとえば、以下のような「v4-route53.abc_ddns_helper.com」というレコードを登録します。
-v4-route53.abc_ddns_helper.com  A レコード
+これについて、以下のとおり解説する。
 
-ここで、IPv4 アドレスは ns01 の実体 IP アドレスと ns02 の実体 IPv4 アドレスの両方を登録したとします。
+2 台以上の DDNS サーバーを立てる場合、典型的な例では、DDns_StaticRecord の定義は、以下のような記載を行なうことになるであろう:
 
-4. Route 53 上で、3 の 2 つの登録 IPv4 アドレスについて、ヘルスチェックを有効にします。ヘルスチェックが通った IPv4 アドレスだけが返るように設定します。
-ヘルスチェックの方法は、ns01 および ns02 の実体 IPv4 アドレス (固定) に対して HTTP で接続し、トップページ / へのアクセスが成功するか否か、で良いと思います。
+DDns_StaticRecord   A @ 1.2.3.4
+DDns_StaticRecord   A @ 5.6.7.8
+DDns_StaticRecord   AAAA @ 11:22:33::44
+DDns_StaticRecord   AAAA @ 55:66:77::88
+DDns_StaticRecord   A v4 1.2.3.4
+DDns_StaticRecord   A v4 5.6.7.8
+DDns_StaticRecord   AAAA v6 11:22:33::44
+DDns_StaticRecord   AAAA v6 55:66:77::88
 
-AWS のドキュメントは以下のとおりです。
-https://docs.aws.amazon.com/ja_jp/Route53/latest/DeveloperGuide/dns-failover-simple-configs.html
+ところが、上記の記載だけでは、ユーザーからの本ドメインの DDNS サーバーの Web サーバーそのものに対するアクセスが、2 つの DDNS サーバーに均等分散されてしまう。正常時はそれで良いが、2 台の DDNS サーバーのうち 1 台がダウンした場合などの異常時は、2 分の 1 の確率でしかアクセスに成功しなくなってしまう。
 
-AWS のユーザーによる詳しい説明記事があります。
-https://dev.classmethod.jp/articles/route53-how-to-set-up-failover-routing/
-https://qiita.com/kooohei/items/c24dd3bab57552127886
+2 台以上の DDNS サーバーが存在するときは、理想的には、相互に監視し合い、ダウンしている DDNS サーバーがあるときは、DDns_StaticRecord のリストから仮想的に一時削除することができれば有益である。そうすれば、ダウンしている DDNS サーバーの A レコードまたは AAAA レコードを応答しなくて済むためである。
 
-5. nslookup や dig で、
-v4-route53.abc_ddns_helper.com
-を解決してみます。2 台の DDNS サーバーのうち 1 台をダウンさせてみたり、立ち上げてみたりします。
-ダウンしている側の DDNS サーバーの実体 IP アドレスが戻ってこないことを確認します。
-これでヘルスチェックのテストは OK です。
+これを実現するために、DDNS サーバーそのものに内蔵しているヘルスチェック機能を利用する場合は、次のように記載する。
 
-6. DDNS サーバーの Admin Config Editor で、
-DDns_StaticRecord  CNAME ddns-api-v4-static v4.@
+DDns_StaticRecord   A @ 1.2.3.4 ! health_check_url=https://<THIS_IP>/health_check/
+DDns_StaticRecord   A @ 5.6.7.8 ! health_check_url=https://<THIS_IP>/health_check/
+DDns_StaticRecord   AAAA @ 11:22:33::44 ! health_check_url=https://<THIS_IP>/health_check/
+DDns_StaticRecord   AAAA @ 55:66:77::88 ! health_check_url=https://<THIS_IP>/health_check/
+DDns_StaticRecord   A v4 1.2.3.4 ! health_check_url=https://<THIS_IP>/health_check/
+DDns_StaticRecord   A v4 5.6.7.8 ! health_check_url=https://<THIS_IP>/health_check/
+DDns_StaticRecord   AAAA v6 11:22:33::44 ! health_check_url=https://<THIS_IP>/health_check/
+DDns_StaticRecord   AAAA v6 55:66:77::88 ! health_check_url=https://<THIS_IP>/health_check/
 
-の定義を
+つまり、従来の DDns_StaticRecord の定義文の末尾に、
 
-DDns_StaticRecord  CNAME ddns-api-v4-static v4-route53.abc_ddns_helper.com
+---
+! health_check_url=https://<THIS_IP>/health_check/
+---
 
-に変更します。
-
-7. 6 により、 ddns-api-v4-static.abc_ddns.com の CNAME が v4-route53.abc_ddns_helper.com を指すようになりました。これで、2 台の DDNS サーバーのうち 1 台がダウンしている時も、1 台が生きていれば、DDNS クライアントは必ず生きている側の DDNS サーバーに到達可能です。(ヘルスチェックの間隔および DNS のキャッシュが消えるまでの間隔時間中は、ダウンしている側の DDNS サーバーにアクセスしようとしてエラーが発生する可能性はあります。)
-
-8. 補足
-実は、登は、上記のヘルスチェックを AWS Route 53 に依存するのは、複雑化を招き、理想的ではなく、良くないと考えています。
-そこで、上記と同じヘルスチェック機能を DDNS サーバー本体に実装することができるか調査しており、実装できそうな場合は、近日中に実装予定です。これが実装できたならば、Route 53 への依存は不要になります。
+という文字列を追記するだけである。このように、設定方法はとても簡易であるが、この設定は、DDNS サーバー内部において、以下のように有益な動作を実現する。
 
 
+まず、プログラムは、health_check_url= に記載されている URL にアクセスしようとする。この際は、DDns_HealthCheck_TimeoutMsecs で指定されるタイムアウト秒数 (5 秒間) を用いて、DDns_HealthCheck_NumTry で指定される試行回数 (3 回)、成功するまで試行する。(成功の定義は、HTTP または HTTPS でのアクセスに成功し、HTTP のコード 200 が応答することである。対象 DDNS サーバーの HTTP サーバーには /health_check/ という仮想ディレクトリが存在し、ここにアクセスがあると、正常であれば「OK」という HTTP コード 200 のコンテンツが応答され、異常であれば 500 Internal Server Error 等が戻される。また、そもそも対象 DDNS サーバーがネットワーク的に到達不能であれば、タイムアウトが発生する。)
 
+成功したならば、その DDns_StaticRecord は存在しているものとみなされる。
+
+一方、失敗したならば、その DDns_StaticRecord は存在していないものとみなされる。
+
+なお、URL のうち <THIS_IP> の部分は、マジック文字列であり、これは、A または AAAA レコードの本文で記載されている IPv4 / IPv6 アドレスに置換される。このようなマジック文字列の表記を実現している理由は、表現上、アドレス表示の重複を避けるためである。もちろん、<THIS_IP> の代わりに IPv4 / IPv6 アドレスを直書きしても良いが、たいていの場合、それは不必要な作業である。
+
+[注釈]
+
+1. ヘルスチェックは DDns_HealthCheck_IntervalSecs で指定された秒数間隔 (デフォルトで 60 秒) ごとに実行される。この設定変数を増加または減少させると、ヘルスチェック間隔を変更することが可能である。
+
+2. ヘルスチェックの対象となるべき URL の IP アドレス部が、ヘルスチェックを実行する側の DDNS サーバーそのものであると検出された場合、ヘルスチェックにおける実際の通信は、省略される。代わりに、自らの DDNS サーバーの内部状態に基づいて生成するヘルスチェック結果 (これは /health_check/ という HTTP URL で応答されるものと同じ結果) が利用される。
+
+3. DDNS ドメインそのものの NS レコードの定義や、その NS レコードに対応する A / AAAA レコードを DDns_StaticRecord 設定構文により定義している場合 (ns01 とか ns02 というような名前であろう) は、決して、「! health_check_url」構文を用いてヘルスチェックを実施してはならない。NS レコードや、これに対応する A レコード / AAAA レコードの定義は、一時的な各 NS サーバーの停止によらず、常に安定して定義が存在していることが求められるためである。(1 つ上位の DNS サーバーにおける NS 定義および Glue レコードの存在と、DDns_StaticRecord 設定構文により定義している NS レコードおよびこれに対応する A / AAAA レコードの存在は、完全一致している必要がある。もちろん、完全一致していなくても一応動作はすると考えられるが、DNS クライアントが混乱する原因となる可能性があるので、できるだけ避けるべきである。)
+
+
+[ソースコードのバージョンについて]
+
+「!」以降が制御文としてみなされるのは、本 DDNS サーバーのソースコードの Git コミット ID が「e051664075c3f805be40f03ad9b894893352bc50」以降のものに限定される。それ以前のコミットのソースコードを利用している場合は、「!」以降が制御文としてみなされる設定を指定してはならない (構文エラーとみなされてしまう)。「!」以降を制御文として記述するためには、まず本 DDNS サーバーをアップデートする必要がある。具体的には、
+
+cd /data1/MikakaDDnsServerDaemon/IPA-DN-Cores/
+git fetch
+git checkout e051664075c3f805be40f03ad9b894893352bc50
+
+としてコミット ID e051664075c3f805be40f03ad9b894893352bc50 のコードをチェックアウトした後、
+
+sudo systemctl stop MikakaDDnsServer
+
+sudo systemctl start MikakaDDnsServer
+
+と実行して、デーモンを再起動すること。デーモンを再起動すると、自動的に新しいソースコードに基づくビルドが行なわれ、新しいバージョンが起動する。
 
 
