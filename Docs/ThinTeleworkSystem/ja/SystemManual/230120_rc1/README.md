@@ -5,3 +5,8 @@
 - PPT ファイル (拡張子が .pptx) は、ダウンロードし、ローカル端末上の PowerPoint で開いたり、編集したりすることができます。
 - PDF ファイル、PPT ファイルとも、Download ボタンをクリックすることで、ローカルにダウンロードして表示したり、手順書ページの文字列をコピー & ペーストしたりすることができます。
 
+
+## シン・テレワークシステムのバージョン更新に対応する更新履歴について
+以下のファイルをご覧ください。
+
+[**https://github.com/IPA-CyberLab/IPA-DN-ThinLib/blob/master/README.md**](https://github.com/IPA-CyberLab/IPA-DN-ThinLib/blob/master/README.md)
