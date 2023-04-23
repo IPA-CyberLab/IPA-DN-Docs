@@ -3,3 +3,13 @@
 8-21. 「HTML5 版 Web クライアント」の文字列やデザインの変更 (ブランド化)
 の解説をスタンドアロン版にも転記する。
 
+9-4. コントローラ管理画面の初期ユーザー名・パスワード「admin / ipantt」の変更
+
+IPA-DNP-ThinController-Public
+-> Private
+
+
+SQL DB の *.sql の Create のファイル名
+
+
+
